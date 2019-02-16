@@ -31,31 +31,6 @@ angle_between_vecs <- function(u, v) {
   acos(cosine_uv) * (180/pi)
 }
 
-#ui <- fluidPage(
-#  titlePanel("2-D PCA Playground"),
-#  sidebarLayout(
-#    sidebarPanel(
-#      fluidRow(
-#        sliderInput("sdx", "SD along x-axis:", min = 0.1, max = 5, value = 1)
-#      ),
-#      fluidRow(
-#        plotOutput("x-dist-plot")
-#      ),
-#      fluidRow(
-#        sliderInput("sdy", "SD along y-axis:", min = 0.1, max = 5, value = 1)
-#      ),
-#      fluidRow(
-#        plotOutput("y-dist-plot")
-#      )
-#    ), # end sidebarPanel
-#    mainPanel(
-#      tableOutput("distTable"),
-#      textOutput("distText"),
-#      plotOutput("distPlot", height = 600, width = 600)
-#    ) # end mainPanel
-#  ) # end sidebarLayout
-#)
-
 
 ui <- fluidPage(
   fluidRow(
@@ -63,38 +38,32 @@ ui <- fluidPage(
       titlePanel("2-D PCA Playground"),
       fluidRow(
         column(6,
-               
-          #fluidRow(
-          #  column(11, offset = 1,
-          #    sliderInput("sdx", "SD along x-axis:", min = 0.1, max = 5, value = 1)
-          #  )
-          #),
-          #fluidRow(
-          #  plotOutput("x-dist-plot", height = "100px")
-          #),
-          #fluidRow(
-          #  sliderInput("sdy", "SD along y-axis:", min = 0.1, max = 5, value = 1)
-          #),
-          #fluidRow(
-          #  plotOutput("y-dist-plot", height = "100px")
-          #)
-          
-          fluidRow(
-            column(11, offset = 1,
-              wellPanel(tabsetPanel(
+
+          fluidRow(column(11, offset = 1,
+                          
+              wellPanel(tabsetPanel( id = "x_tabset",
                 tabPanel("Norm",
                   sliderInput("sdx", "SD along x-axis:", min = 0.1, max = 5, value = 1)
+                ),
+                tabPanel("Unif",
+                  sliderInput("sclx", "Scale:", min = 0.1, max = 10, value = 1)
                 )
               ),
-              plotOutput("x_dist_plot", height = "100px")),
-              wellPanel(tabsetPanel(
+              plotOutput("x_dist_plot", height = "100px")
+              ), # end wellPanel for X
+
+              wellPanel(tabsetPanel( id = "y_tabset",
                 tabPanel("Norm",
                   sliderInput("sdy", "SD along y-axis:", min = 0.1, max = 5, value = 1)
+                ),
+                tabPanel("Unif",
+                  sliderInput("scly", "Scale:", min = 0.1, max = 10, value = 1)
                 )
               ),
-              plotOutput("y_dist_plot", height = "100px"))
-            )
-          )
+              plotOutput("y_dist_plot", height = "100px")
+              ) # end wellPanel for Y
+              
+            ))
           
         ), # end left-hand column
         column(6,
@@ -109,6 +78,9 @@ ui <- fluidPage(
           ),
           fluidRow(
             plotOutput("distPlot")
+          ), 
+          fluidRow(
+            textOutput("test_output")
           )
                
         ) # end right-hand column
@@ -123,10 +95,20 @@ server <- function(input, output) {
   
   # X and Y coordinates are used multiple places, so use reactive expressions
   x_coords <- reactive({
-    get_coords(input$sdx)
+    #get_coords(input$sdx)
+    if (input$x_tabset == "Norm") {
+      rnorm(10000, mean = 0, sd = input$sdx)
+    } else if (input$x_tabset == "Unif") {
+      runif(10000) * input$sclx - input$sclx / 2
+    }
   })
   y_coords <- reactive({
-    get_coords(input$sdy)
+    #get_coords(input$sdy)
+    if (input$y_tabset == "Norm") {
+      rnorm(10000, mean = 0, sd = input$sdy)
+    } else if (input$x_tabset == "Unif") {
+      runif(10000) * input$scly - input$scly / 2
+    }
   })
   
   # same for dataframes holding coords and PCA info
@@ -161,15 +143,17 @@ server <- function(input, output) {
    })
    
    output$x_dist_plot <- renderPlot({
-     df_tmp <- data.frame("x" = x_coords())
-     ggplot(df_tmp, aes(x)) + geom_histogram(binwidth = 0.1) + 
-       labs(x = NULL, y = NULL)
+     ggplot(df_coords(), aes(x)) + geom_histogram(binwidth = 0.1) + 
+       labs(x = NULL, y = NULL) + xlim(-10, 10)
    })
    
    output$y_dist_plot <- renderPlot({
-     df_tmp <- data.frame("y" = y_coords())
-     ggplot(df_tmp, aes(y)) + geom_histogram(binwidth = 0.1) + 
-       labs(x = NULL, y = NULL)
+     ggplot(df_coords(), aes(y)) + geom_histogram(binwidth = 0.1) + 
+       labs(x = NULL, y = NULL) + xlim(-10, 10)
+   })
+   
+   output$test_output <- renderText({
+     sprintf("x tab (%s), y tab (%s)", input$x_tabset, input$y_tabset)
    })
 }
 
