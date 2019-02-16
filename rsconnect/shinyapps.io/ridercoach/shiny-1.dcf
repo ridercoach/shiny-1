@@ -5,8 +5,8 @@ account: ridercoach
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 694435
-bundleId: 1879716
+bundleId: 1879779
 url: https://ridercoach.shinyapps.io/shiny-1/
-when: 1550331710.16527
+when: 1550335326.13983
 asMultiple: FALSE
 asStatic: FALSE

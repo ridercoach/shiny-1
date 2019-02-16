@@ -23,28 +23,100 @@ get_pca_df <- function(df) {
   df_pca <- data.frame("PC" = rownames(m), as.data.frame(m * m_wts * 2))
 }
 
-ui <- fluidPage(
-   
-   titlePanel("2-D PCA Playground"),
-   
-   sidebarLayout(
-     
-      sidebarPanel(
-        
-         # sliders to set std dev in X and Y
-         sliderInput("sdx", "SD along x-axis:", min = 0.1, max = 5, value = 1),
-         sliderInput("sdy", "SD along y-axis:", min = 0.1, max = 5, value = 1)
-      ),
-      
-      mainPanel(
-         # plot for displaying point and PCA vectors
-           plotOutput("distPlot", height = 600, width = 600),
+angle_between_vecs <- function(u, v) {
+  mag_u <- sqrt(sum(u*u))
+  mag_v <- sqrt(sum(v*v))
+  dot_uv <- sum(u*v)
+  cosine_uv <- dot_uv / (mag_u * mag_v)
+  acos(cosine_uv) * (180/pi)
+}
 
-         # table for displaying PCA info
-           tableOutput("distTable")
-      )
-   )
-)
+#ui <- fluidPage(
+#  titlePanel("2-D PCA Playground"),
+#  sidebarLayout(
+#    sidebarPanel(
+#      fluidRow(
+#        sliderInput("sdx", "SD along x-axis:", min = 0.1, max = 5, value = 1)
+#      ),
+#      fluidRow(
+#        plotOutput("x-dist-plot")
+#      ),
+#      fluidRow(
+#        sliderInput("sdy", "SD along y-axis:", min = 0.1, max = 5, value = 1)
+#      ),
+#      fluidRow(
+#        plotOutput("y-dist-plot")
+#      )
+#    ), # end sidebarPanel
+#    mainPanel(
+#      tableOutput("distTable"),
+#      textOutput("distText"),
+#      plotOutput("distPlot", height = 600, width = 600)
+#    ) # end mainPanel
+#  ) # end sidebarLayout
+#)
+
+
+ui <- fluidPage(
+  fluidRow(
+    column(12,
+      titlePanel("2-D PCA Playground"),
+      fluidRow(
+        column(6,
+               
+          #fluidRow(
+          #  column(11, offset = 1,
+          #    sliderInput("sdx", "SD along x-axis:", min = 0.1, max = 5, value = 1)
+          #  )
+          #),
+          #fluidRow(
+          #  plotOutput("x-dist-plot", height = "100px")
+          #),
+          #fluidRow(
+          #  sliderInput("sdy", "SD along y-axis:", min = 0.1, max = 5, value = 1)
+          #),
+          #fluidRow(
+          #  plotOutput("y-dist-plot", height = "100px")
+          #)
+          
+          fluidRow(
+            column(11, offset = 1,
+              wellPanel(tabsetPanel(
+                tabPanel("Norm",
+                  sliderInput("sdx", "SD along x-axis:", min = 0.1, max = 5, value = 1)
+                )
+              ),
+              plotOutput("x_dist_plot", height = "100px")),
+              wellPanel(tabsetPanel(
+                tabPanel("Norm",
+                  sliderInput("sdy", "SD along y-axis:", min = 0.1, max = 5, value = 1)
+                )
+              ),
+              plotOutput("y_dist_plot", height = "100px"))
+            )
+          )
+          
+        ), # end left-hand column
+        column(6,
+               
+          fluidRow(
+            column(6,
+              tableOutput("distTable")
+            ),
+            column(6,
+              textOutput("distText")
+            )
+          ),
+          fluidRow(
+            plotOutput("distPlot")
+          )
+               
+        ) # end right-hand column
+      ) # end second-level fluidPage
+    ) # end full-width column
+  ) # end outermost fluidRow
+) # end fluidPage
+
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
@@ -80,6 +152,24 @@ server <- function(input, output) {
   
    output$distTable <- renderTable({
      pca_info()
+   })
+   
+   output$distText <- renderText({
+     df <- pca_info()
+     a <- angle_between_vecs(df[1, 2:3], df[2, 2:3])
+     sprintf("Angle between PCs is %6.2f deg", a)
+   })
+   
+   output$x_dist_plot <- renderPlot({
+     df_tmp <- data.frame("x" = x_coords())
+     ggplot(df_tmp, aes(x)) + geom_histogram(binwidth = 0.1) + 
+       labs(x = NULL, y = NULL)
+   })
+   
+   output$y_dist_plot <- renderPlot({
+     df_tmp <- data.frame("y" = y_coords())
+     ggplot(df_tmp, aes(y)) + geom_histogram(binwidth = 0.1) + 
+       labs(x = NULL, y = NULL)
    })
 }
 
