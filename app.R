@@ -30,12 +30,18 @@ ui <- fluidPage(
    sidebarLayout(
      
       sidebarPanel(
+        
+         # sliders to set std dev in X and Y
          sliderInput("sdx", "SD along x-axis:", min = 0.1, max = 5, value = 1),
          sliderInput("sdy", "SD along y-axis:", min = 0.1, max = 5, value = 1)
       ),
       
       mainPanel(
-         plotOutput("distPlot")
+         # plot for displaying point and PCA vectors
+           plotOutput("distPlot", height = 600, width = 600),
+
+         # table for displaying PCA info
+           tableOutput("distTable")
       )
    )
 )
@@ -43,22 +49,38 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
   
-   output$distPlot <- renderPlot({
+  # X and Y coordinates are used multiple places, so use reactive expressions
+  x_coords <- reactive({
+    get_coords(input$sdx)
+  })
+  y_coords <- reactive({
+    get_coords(input$sdy)
+  })
+  
+  # same for dataframes holding coords and PCA info
+  df_coords <- reactive({
+    data.frame("x" = x_coords(), "y" = y_coords())
+  })
+  pca_info <- reactive({
+    get_pca_df(df_coords())
+  })
+  
+  output$distPlot <- renderPlot({
      
-      x_coords <- get_coords(input$sdx)     
-      y_coords <- get_coords(input$sdy)
-      lim <- get_axes_limit(x_coords, y_coords)
-     
-      df <- data.frame("x" = x_coords, "y" = y_coords)
-      df_pca <- get_pca_df(df)
-     
-      ggplot(df) + 
+      # make a square plot with limits that match the data
+      lim <- get_axes_limit(x_coords(), y_coords())
+
+      ggplot(df_coords()) + 
         geom_point(aes(x, y), color = "blue", alpha = 0.3) + 
-        geom_segment(data = df_pca, 
+        geom_segment(data = pca_info(), 
                      aes(x = 0, y = 0, xend = x, yend = y, color = PC), 
                      size = 2) + 
         xlim(-lim, lim) + ylim(-lim, lim)
-   }, height = 600, width = 600)
+   })
+  
+   output$distTable <- renderTable({
+     pca_info()
+   })
 }
 
 # Run the application
