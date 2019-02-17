@@ -43,10 +43,13 @@ ui <- fluidPage(
                           
               wellPanel(tabsetPanel( id = "x_tabset",
                 tabPanel("Norm",
-                  sliderInput("sdx", "SD along x-axis:", min = 0.1, max = 5, value = 1)
+                  sliderInput("sdx", "SD:", min = 0.1, max = 5, value = 1)
                 ),
                 tabPanel("Unif",
                   sliderInput("sclx", "Scale:", min = 0.1, max = 10, value = 1)
+                ),
+                tabPanel("Exp",
+                  sliderInput("ertx", "Rate:", min = 0.1, max = 5, value = 1)
                 )
               ),
               plotOutput("x_dist_plot", height = "100px")
@@ -54,10 +57,13 @@ ui <- fluidPage(
 
               wellPanel(tabsetPanel( id = "y_tabset",
                 tabPanel("Norm",
-                  sliderInput("sdy", "SD along y-axis:", min = 0.1, max = 5, value = 1)
+                  sliderInput("sdy", "SD:", min = 0.1, max = 5, value = 1)
                 ),
                 tabPanel("Unif",
                   sliderInput("scly", "Scale:", min = 0.1, max = 10, value = 1)
+                ),
+                tabPanel("Exp",
+                  sliderInput("erty", "Rate:", min = 0.1, max = 5, value = 1)
                 )
               ),
               plotOutput("y_dist_plot", height = "100px")
@@ -100,14 +106,18 @@ server <- function(input, output) {
       rnorm(10000, mean = 0, sd = input$sdx)
     } else if (input$x_tabset == "Unif") {
       runif(10000) * input$sclx - input$sclx / 2
+    } else if (input$x_tabset == "Exp") {
+      scale(rexp(10000, rate = input$ertx), center = TRUE, scale = FALSE)
     }
   })
   y_coords <- reactive({
     #get_coords(input$sdy)
     if (input$y_tabset == "Norm") {
       rnorm(10000, mean = 0, sd = input$sdy)
-    } else if (input$x_tabset == "Unif") {
+    } else if (input$y_tabset == "Unif") {
       runif(10000) * input$scly - input$scly / 2
+    } else if (input$y_tabset == "Exp") {
+      scale(rexp(10000, rate = input$erty), center = TRUE, scale = FALSE)
     }
   })
   
