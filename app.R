@@ -2,6 +2,8 @@
 library(shiny)
 library(ggplot2)
 
+#--------------- global vars and helper functions ---------------------
+
 N_POINTS = 2000
 
 # find one limit that encompasses the data +/- on both axes
@@ -37,6 +39,46 @@ dist_parms <- function(dist, sd, rate) {
   r
 }
 
+#----------------------- coords module --------------------------------
+
+# TODO: I would like to get the UI and server sides of the coords distributions 
+# somehow driven from the same data structure;
+
+# TODO: it might be more intuitive and make more room for controls is
+# instead of making the X and Y wellpanels vertically stacked, they were 
+# a pair of higher level tabs;
+
+coordsUI <- function(id) {
+  ns <- NS(id)
+  
+  wellPanel(tabsetPanel( id = ns("tabset"),
+    tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
+    tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
+    tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1))
+  ),
+  plotOutput(ns("dist_plot"), height = "100px"))
+}
+
+coords <- function(input, output, session) {
+  
+  values <- reactive({
+    scale(do.call(input$tabset, dist_parms(input$tabset, input$sd, input$rate)), 
+          center = TRUE, 
+          scale = ifelse(input$tabset == "runif", input$scale, 1))
+  })
+
+  output$dist_plot <- renderPlot({
+    ggplot(data.frame(n = values()), aes(n)) + geom_histogram(binwidth = 0.1) + 
+      labs(x = NULL, y = NULL) + xlim(-10, 10)
+  })
+  
+  values 
+}
+
+#----------------------- main program ---------------------------------
+
+# TODO: we might not need so many levels of column/row nesting here if 
+# we use the idea of making the X/Y wellpanels tabs;
 
 ui <- fluidPage(
   fluidRow(
@@ -46,35 +88,8 @@ ui <- fluidPage(
         column(6,
 
           fluidRow(column(11, offset = 1,
-                          
-              wellPanel(tabsetPanel( id = "x_tabset",
-                tabPanel("rnorm",
-                  sliderInput("sdx", "SD:", min = 0.1, max = 5, value = 1)
-                ),
-                tabPanel("runif",
-                  sliderInput("sclx", "Scale:", min = 0.1, max = 10, value = 1)
-                ),
-                tabPanel("rexp",
-                  sliderInput("ertx", "Rate:", min = 0.1, max = 5, value = 1)
-                )
-              ),
-              plotOutput("x_dist_plot", height = "100px")
-              ), # end wellPanel for X
-
-              wellPanel(tabsetPanel( id = "y_tabset",
-                tabPanel("rnorm",
-                  sliderInput("sdy", "SD:", min = 0.1, max = 5, value = 1)
-                ),
-                tabPanel("runif",
-                  sliderInput("scly", "Scale:", min = 0.1, max = 10, value = 1)
-                ),
-                tabPanel("rexp",
-                  sliderInput("erty", "Rate:", min = 0.1, max = 5, value = 1)
-                )
-              ),
-              plotOutput("y_dist_plot", height = "100px")
-              ) # end wellPanel for Y
-              
+              coordsUI("X"),
+              coordsUI("Y")
             ))
           
         ), # end left-hand column
@@ -105,17 +120,8 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output) {
   
-  # X and Y coordinates are used multiple places, so use reactive expressions
-  x_coords <- reactive({
-    scale(do.call(input$x_tabset, dist_parms(input$x_tabset, input$sdx, input$ertx)), 
-          center = TRUE, 
-          scale = ifelse(input$x_tabset == "runif", input$sclx, 1))
-  })
-  y_coords <- reactive({
-    scale(do.call(input$y_tabset, dist_parms(input$y_tabset, input$sdy, input$erty)), 
-          center = TRUE, 
-          scale = ifelse(input$y_tabset == "runif", input$scly, 1))
-  })
+  x_coords <- callModule(coords, "X")
+  y_coords <- callModule(coords, "Y")
   
   # same for dataframes holding coords and PCA info
   df_coords <- reactive({
@@ -147,17 +153,7 @@ server <- function(input, output) {
      a <- angle_between_vecs(df[1, 2:3], df[2, 2:3])
      sprintf("Angle between PCs is %6.2f deg", a)
    })
-   
-   output$x_dist_plot <- renderPlot({
-     ggplot(df_coords(), aes(x)) + geom_histogram(binwidth = 0.1) + 
-       labs(x = NULL, y = NULL) + xlim(-10, 10)
-   })
-   
-   output$y_dist_plot <- renderPlot({
-     ggplot(df_coords(), aes(y)) + geom_histogram(binwidth = 0.1) + 
-       labs(x = NULL, y = NULL) + xlim(-10, 10)
-   })
-   
+
    output$test_output <- renderText({
      sprintf("x tab (%s), y tab (%s)", input$x_tabset, input$y_tabset)
    })
