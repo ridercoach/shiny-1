@@ -2,11 +2,7 @@
 library(shiny)
 library(ggplot2)
 
-# generate a set of numbers according to the specified 
-# distribution and related params
-get_coords <- function(sd = 1) {
-  rnorm(10000, mean = 0, sd = sd)
-}
+N_POINTS = 2000
 
 # find one limit that encompasses the data +/- on both axes
 get_axes_limit <- function(x_coords, y_coords) {
@@ -31,6 +27,16 @@ angle_between_vecs <- function(u, v) {
   acos(cosine_uv) * (180/pi)
 }
 
+dist_parms <- function(dist, sd, rate) {
+  r <- list(n = N_POINTS)
+  if (dist == "rnorm") {
+    r$sd <- sd
+  } else if (dist == "rexp") {
+    r$rate <- rate
+  }
+  r
+}
+
 
 ui <- fluidPage(
   fluidRow(
@@ -42,13 +48,13 @@ ui <- fluidPage(
           fluidRow(column(11, offset = 1,
                           
               wellPanel(tabsetPanel( id = "x_tabset",
-                tabPanel("Norm",
+                tabPanel("rnorm",
                   sliderInput("sdx", "SD:", min = 0.1, max = 5, value = 1)
                 ),
-                tabPanel("Unif",
+                tabPanel("runif",
                   sliderInput("sclx", "Scale:", min = 0.1, max = 10, value = 1)
                 ),
-                tabPanel("Exp",
+                tabPanel("rexp",
                   sliderInput("ertx", "Rate:", min = 0.1, max = 5, value = 1)
                 )
               ),
@@ -56,13 +62,13 @@ ui <- fluidPage(
               ), # end wellPanel for X
 
               wellPanel(tabsetPanel( id = "y_tabset",
-                tabPanel("Norm",
+                tabPanel("rnorm",
                   sliderInput("sdy", "SD:", min = 0.1, max = 5, value = 1)
                 ),
-                tabPanel("Unif",
+                tabPanel("runif",
                   sliderInput("scly", "Scale:", min = 0.1, max = 10, value = 1)
                 ),
-                tabPanel("Exp",
+                tabPanel("rexp",
                   sliderInput("erty", "Rate:", min = 0.1, max = 5, value = 1)
                 )
               ),
@@ -101,24 +107,14 @@ server <- function(input, output) {
   
   # X and Y coordinates are used multiple places, so use reactive expressions
   x_coords <- reactive({
-    #get_coords(input$sdx)
-    if (input$x_tabset == "Norm") {
-      rnorm(10000, mean = 0, sd = input$sdx)
-    } else if (input$x_tabset == "Unif") {
-      runif(10000) * input$sclx - input$sclx / 2
-    } else if (input$x_tabset == "Exp") {
-      scale(rexp(10000, rate = input$ertx), center = TRUE, scale = FALSE)
-    }
+    scale(do.call(input$x_tabset, dist_parms(input$x_tabset, input$sdx, input$ertx)), 
+          center = TRUE, 
+          scale = ifelse(input$x_tabset == "runif", input$sclx, 1))
   })
   y_coords <- reactive({
-    #get_coords(input$sdy)
-    if (input$y_tabset == "Norm") {
-      rnorm(10000, mean = 0, sd = input$sdy)
-    } else if (input$y_tabset == "Unif") {
-      runif(10000) * input$scly - input$scly / 2
-    } else if (input$y_tabset == "Exp") {
-      scale(rexp(10000, rate = input$erty), center = TRUE, scale = FALSE)
-    }
+    scale(do.call(input$y_tabset, dist_parms(input$y_tabset, input$sdy, input$erty)), 
+          center = TRUE, 
+          scale = ifelse(input$y_tabset == "runif", input$scly, 1))
   })
   
   # same for dataframes holding coords and PCA info
