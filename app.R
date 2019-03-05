@@ -19,6 +19,10 @@ get_pca_df <- function(df) {
   m <- t(pca$rotation)
   m_wts <- matrix(rep(summary(pca)$importance[1,], 2), nrow=2)
   df_pca <- data.frame("PC" = rownames(m), as.data.frame(m * m_wts * 2))
+  df_pca$len <- sqrt(df_pca$x ^ 2 + df_pca$y ^ 2)
+  df_pca$SD <- summary(pca)$importance[1,]
+  df_pca$PropVar <- summary(pca)$importance[2,]
+  df_pca
 }
 
 angle_between_vecs <- function(u, v) {
@@ -96,18 +100,13 @@ ui <- fluidPage(
         column(6,
                
           fluidRow(
-            column(6,
-              tableOutput("distTable")
-            ),
-            column(6,
-              textOutput("distText")
-            )
+            tableOutput("distTable")
+          ),
+          fluidRow(
+            textOutput("distAngle")
           ),
           fluidRow(
             plotOutput("distPlot")
-          ), 
-          fluidRow(
-            textOutput("test_output")
           )
                
         ) # end right-hand column
@@ -148,15 +147,15 @@ server <- function(input, output) {
      pca_info()
    })
    
-   output$distText <- renderText({
+   output$distAngle <- renderText({
      df <- pca_info()
      a <- angle_between_vecs(df[1, 2:3], df[2, 2:3])
      sprintf("Angle between PCs is %6.2f deg", a)
    })
 
-   output$test_output <- renderText({
-     sprintf("x tab (%s), y tab (%s)", input$x_tabset, input$y_tabset)
-   })
+   #output$test_output <- renderText({
+   #  sprintf("x tab (%s), y tab (%s)", input$x_tabset, input$y_tabset)
+   #})
 }
 
 # Run the application
