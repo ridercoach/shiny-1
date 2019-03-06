@@ -6,6 +6,10 @@ library(ggplot2)
 
 N_POINTS = 2000
 
+s_expl_1 = "Specify distributions of properties A and B for the data, "
+s_expl_2 = "using the tabs below. The resulting principal "
+s_expl_3 = "components are shown in the table and plot."
+
 # find one limit that encompasses the data +/- on both axes
 get_axes_limit <- function(x_coords, y_coords) {
   xlim <- max(abs(floor(min(x_coords))), abs(ceiling(max(x_coords))))
@@ -48,19 +52,45 @@ dist_parms <- function(dist, sd, rate) {
 # TODO: I would like to get the UI and server sides of the coords distributions 
 # somehow driven from the same data structure;
 
-# TODO: it might be more intuitive and make more room for controls is
-# instead of making the X and Y wellpanels vertically stacked, they were 
-# a pair of higher level tabs;
+tabset_list <- function(ns) {
+  list(
+    id = ns("tabset"),
+    tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
+    tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
+    tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1))
+  )
+}
 
 coordsUI <- function(id) {
   ns <- NS(id)
   
-  wellPanel(tabsetPanel( id = ns("tabset"),
-    tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
-    tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
-    tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1))
-  ),
-  plotOutput(ns("dist_plot"), height = "100px"))
+  #wellPanel(tabsetPanel( id = ns("tabset"),
+  #  tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
+  #  tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
+  #  tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1))
+  #),
+  
+  wellPanel(
+    
+    #tabsetPanel(
+    #  id = ns("tabset"),
+    #  tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
+    #  tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
+    #  tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1))
+    #),
+    
+    #do.call(
+    #tabsetPanel, list(
+    #  id = ns("tabset"),
+    #  tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
+    #  tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
+    #  tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1)))
+    #),
+    
+    do.call(tabsetPanel, tabset_list(ns)),
+    
+    plotOutput(ns("dist_plot"), height = "100px")
+  )
 }
 
 coords <- function(input, output, session) {
@@ -81,39 +111,38 @@ coords <- function(input, output, session) {
 
 #----------------------- main program ---------------------------------
 
-# TODO: we might not need so many levels of column/row nesting here if 
-# we use the idea of making the X/Y wellpanels tabs;
-
 ui <- fluidPage(
+  
+  # header row
   fluidRow(
-    column(12,
-      titlePanel(HTML('<span style="text-align: center; font-weight: bold">2-D PCA Playground</span>')),
-      fluidRow(
-        
-        # left-hand column
-        column(6,
-          #fluidRow(column(11, offset = 1,
-              tabsetPanel( id = "ABtabset",
-                tabPanel("Property A", coordsUI("X")),
-                tabPanel("Property B", coordsUI("Y"))
-              )
-          #))
-        ),
-        
-        # right-hand column
-        column(6,
-          fluidRow(tableOutput("distTable")),
-          fluidRow(textOutput("distAngle")),
-          fluidRow(plotOutput("distPlot"))
-        )
-        
-      ) # end second-level fluidPage
-    ) # end full-width column
-  ) # end outermost fluidRow
-) # end fluidPage
+    column(10, offset = 1, 
+      HTML('<h3 style="text-align: center; font-weight: bold;">2-D PCA Playground</h3>'),
+      HTML(sprintf('<p style="text-align: center;">%s%s%s</p>', s_expl_1, s_expl_2, s_expl_3)),
+      hr()
+    )
+  ),
 
+  # main row
+  fluidRow(
+        
+    # left-hand column
+    column(6,
+      tabsetPanel( id = "ABtabset",
+        tabPanel("Property A", coordsUI("X")),
+        tabPanel("Property B", coordsUI("Y"))
+      )
+    ),
+        
+    # right-hand column
+    column(6,
+      fluidRow(tableOutput("distTable")),
+      fluidRow(textOutput("distAngle")),
+      fluidRow(plotOutput("distPlot"))
+    )
+        
+  )
+)
 
-# Define server logic required to draw a histogram
 server <- function(input, output) {
   
   x_coords <- callModule(coords, "X")
@@ -127,6 +156,8 @@ server <- function(input, output) {
     get_pca_df(df_coords())
   })
   
+  # TODO: it would be nice if the plot was always visually square regardless of 
+  # how the app is resized;
   output$distPlot <- renderPlot({
      
       # make a square plot with limits that match the data
@@ -148,12 +179,8 @@ server <- function(input, output) {
    output$distAngle <- renderText({
      df <- pca_info()
      a <- angle_between_vecs(df[1, 2:3], df[2, 2:3])
-     sprintf("Angle between PCs is %6.2f deg", a)
+     sprintf("Computed angle between PCs: %6.2f deg", a)
    })
-
-   #output$test_output <- renderText({
-   #  sprintf("x tab (%s), y tab (%s)", input$x_tabset, input$y_tabset)
-   #})
 }
 
 # Run the application
