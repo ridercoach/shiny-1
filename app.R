@@ -87,29 +87,26 @@ coords <- function(input, output, session) {
 ui <- fluidPage(
   fluidRow(
     column(12,
-      titlePanel("2-D PCA Playground"),
+      titlePanel(HTML('<span style="text-align: center; font-weight: bold">2-D PCA Playground</span>')),
       fluidRow(
+        
+        # left-hand column
         column(6,
-
-          fluidRow(column(11, offset = 1,
-              coordsUI("X"),
-              coordsUI("Y")
-            ))
-          
-        ), # end left-hand column
+          #fluidRow(column(11, offset = 1,
+              tabsetPanel( id = "ABtabset",
+                tabPanel("Property A", coordsUI("X")),
+                tabPanel("Property B", coordsUI("Y"))
+              )
+          #))
+        ),
+        
+        # right-hand column
         column(6,
-               
-          fluidRow(
-            tableOutput("distTable")
-          ),
-          fluidRow(
-            textOutput("distAngle")
-          ),
-          fluidRow(
-            plotOutput("distPlot")
-          )
-               
-        ) # end right-hand column
+          fluidRow(tableOutput("distTable")),
+          fluidRow(textOutput("distAngle")),
+          fluidRow(plotOutput("distPlot"))
+        )
+        
       ) # end second-level fluidPage
     ) # end full-width column
   ) # end outermost fluidRow
@@ -140,7 +137,8 @@ server <- function(input, output) {
         geom_segment(data = pca_info(), 
                      aes(x = 0, y = 0, xend = x, yend = y, color = PC), 
                      size = 2) + 
-        xlim(-lim, lim) + ylim(-lim, lim)
+        xlim(-lim, lim) + ylim(-lim, lim) + 
+        labs(x = "Property A", y = "Property B")
    })
   
    output$distTable <- renderTable({
