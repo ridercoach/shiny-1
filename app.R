@@ -6,11 +6,14 @@ library(ggplot2)
 
 N_POINTS = 2000
 
-DIST_PARMS <- list(rnorm = "sd", 
-                   runif = "max", 
-                   rexp = "rate", 
-                   rchisq = "df", 
-                   rlnorm = "sdlog")
+#tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
+DIST <- list(
+  rnorm = list(param = "sd", lbl = "SD:", min = 0.1, max = 5, value = 1), 
+  runif = list(param = "max", lbl = "Max:", min = 0.1, max = 10, value = 1), 
+  rexp = list(param = "rate", lbl = "Rate:", min = 0.1, max = 5, value = 1), 
+  rchisq = list(param = "df", lbl = "Deg of Freedom:", min = 0.1, max = 10, value = 1), 
+  rlnorm = list(param = "sdlog", lbl = "SDLog:", min = 0.1, max = 5, value = 1)
+)
 
 s_expl_1 = "Specify distributions of properties A and B for the data, "
 s_expl_2 = "using the tabs below. The resulting principal "
@@ -36,42 +39,34 @@ get_pca_df <- function(df) {
 }
 
 angle_between_vecs <- function(u, v) {
-  mag_u <- sqrt(sum(u*u))
-  mag_v <- sqrt(sum(v*v))
-  dot_uv <- sum(u*v)
-  cosine_uv <- dot_uv / (mag_u * mag_v)
+  cosine_uv <- sum(u*v) / (sqrt(sum(u*u)) * sqrt(sum(v*v)))
   acos(cosine_uv) * (180/pi)
 }
 
 #----------------------- coords module --------------------------------
 
-# TODO: I would like to get the UI and server sides of the coords distributions 
-# somehow driven from the same data structure;
-
-tabset_list <- function(ns) {
-  list(
-    id = ns("tabset"),
-    tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
-    tabPanel("runif", sliderInput(ns("max"), "Max:", min = 0.1, max = 10, value = 1)),
-    tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1)),
-    tabPanel("rchisq", sliderInput(ns("df"), "Deg of Freedom:", min = 0.1, max = 10, value = 1)),
-    tabPanel("rlnorm", sliderInput(ns("sdlog"), "SDLog:", min = 0.1, max = 5, value = 1))
-  )
+make_tabpanel <- function(dist_name, ns) {
+  di <- DIST[[dist_name]]
+  tabPanel(dist_name, 
+    sliderInput(ns(di$param), di$lbl, min = di$min, max = di$max, value = di$value))
 }
 
 get_dist <- function(input) {
-  param <- DIST_PARMS[[input$tabset]]
+  param <- DIST[[input$tabset]][["param"]]
   p <- list(n = N_POINTS)
   p[[param]] <- input[[param]]
   dist <- do.call(input$tabset, p)
+  if (input$flip == TRUE) dist = -dist
   scale(dist, center = TRUE, scale = FALSE)
 }
 
 coordsUI <- function(id) {
   ns <- NS(id)
   wellPanel(
-    do.call(tabsetPanel, tabset_list(ns)),
-    plotOutput(ns("dist_plot"), height = "100px")
+    do.call(tabsetPanel, c(list(id = ns("tabset")), 
+                           lapply(names(DIST), function(x) make_tabpanel(x, ns)))),
+    plotOutput(ns("dist_plot"), height = "100px"),
+    checkboxInput(ns("flip"), label = "Rotate distribution about 0", value = FALSE)
   )
 }
 
