@@ -6,6 +6,12 @@ library(ggplot2)
 
 N_POINTS = 2000
 
+DIST_PARMS <- list(rnorm = "sd", 
+                   runif = "max", 
+                   rexp = "rate", 
+                   rchisq = "df", 
+                   rlnorm = "sdlog")
+
 s_expl_1 = "Specify distributions of properties A and B for the data, "
 s_expl_2 = "using the tabs below. The resulting principal "
 s_expl_3 = "components are shown in the table and plot."
@@ -37,16 +43,6 @@ angle_between_vecs <- function(u, v) {
   acos(cosine_uv) * (180/pi)
 }
 
-dist_parms <- function(dist, sd, rate) {
-  r <- list(n = N_POINTS)
-  if (dist == "rnorm") {
-    r$sd <- sd
-  } else if (dist == "rexp") {
-    r$rate <- rate
-  }
-  r
-}
-
 #----------------------- coords module --------------------------------
 
 # TODO: I would like to get the UI and server sides of the coords distributions 
@@ -56,50 +52,32 @@ tabset_list <- function(ns) {
   list(
     id = ns("tabset"),
     tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
-    tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
-    tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1))
+    tabPanel("runif", sliderInput(ns("max"), "Max:", min = 0.1, max = 10, value = 1)),
+    tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1)),
+    tabPanel("rchisq", sliderInput(ns("df"), "Deg of Freedom:", min = 0.1, max = 10, value = 1)),
+    tabPanel("rlnorm", sliderInput(ns("sdlog"), "SDLog:", min = 0.1, max = 5, value = 1))
   )
+}
+
+get_dist <- function(input) {
+  param <- DIST_PARMS[[input$tabset]]
+  p <- list(n = N_POINTS)
+  p[[param]] <- input[[param]]
+  dist <- do.call(input$tabset, p)
+  scale(dist, center = TRUE, scale = FALSE)
 }
 
 coordsUI <- function(id) {
   ns <- NS(id)
-  
-  #wellPanel(tabsetPanel( id = ns("tabset"),
-  #  tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
-  #  tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
-  #  tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1))
-  #),
-  
   wellPanel(
-    
-    #tabsetPanel(
-    #  id = ns("tabset"),
-    #  tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
-    #  tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
-    #  tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1))
-    #),
-    
-    #do.call(
-    #tabsetPanel, list(
-    #  id = ns("tabset"),
-    #  tabPanel("rnorm", sliderInput(ns("sd"), "SD:", min = 0.1, max = 5, value = 1)),
-    #  tabPanel("runif", sliderInput(ns("scale"), "Scale:", min = 0.1, max = 10, value = 1)),
-    #  tabPanel("rexp", sliderInput(ns("rate"), "Rate:", min = 0.1, max = 5, value = 1)))
-    #),
-    
     do.call(tabsetPanel, tabset_list(ns)),
-    
     plotOutput(ns("dist_plot"), height = "100px")
   )
 }
 
 coords <- function(input, output, session) {
   
-  values <- reactive({
-    scale(do.call(input$tabset, dist_parms(input$tabset, input$sd, input$rate)), 
-          center = TRUE, 
-          scale = ifelse(input$tabset == "runif", input$scale, 1))
-  })
+  values <- reactive({get_dist(input)})
 
   output$dist_plot <- renderPlot({
     ggplot(data.frame(n = values()), aes(n)) + geom_histogram(binwidth = 0.1) + 
